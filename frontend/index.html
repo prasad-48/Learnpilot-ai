@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduPilot - Premium AI Education</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Profile -->
+        <aside class="sidebar glass-panel">
+            <div class="logo">
+                <div class="logo-icon"></div>
+                <h1>EduPilot</h1>
+            </div>
+            
+            <div class="profile-card">
+                <div class="avatar"><img src="https://i.pravatar.cc/150?u=a042581f4e29026704d" alt="Student"></div>
+                <h2>Student Profile</h2>
+                <form id="profile-form">
+                    <div class="form-group">
+                        <label>Student ID</label>
+                        <input type="text" id="student-id" value="STU_1001" />
+                    </div>
+                    <div class="form-group">
+                        <label>First Name</label>
+                        <input type="text" id="student-name" value="Alex" />
+                    </div>
+                    <div class="form-group">
+                        <label>Grade Level</label>
+                        <input type="text" id="grade-level" value="Grade 8" />
+                    </div>
+                    <div class="form-group">
+                        <label>Age</label>
+                        <input type="number" id="age" value="13" />
+                    </div>
+                    <div class="form-group">
+                        <label>Learning Style</label>
+                        <select id="learning-style">
+                            <option value="visual">Visual</option>
+                            <option value="reading" selected>Reading</option>
+                            <option value="auditory">Auditory</option>
+                            <option value="kinesthetic">Kinesthetic</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div style="margin-top:auto; font-size: 0.8rem; color: var(--text-muted); opacity: 0.7;">
+                Running on Local FastAPI Server<br/>
+                Orchestration: LangGraph + CrewAI
+            </div>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="workspace">
+            <header class="workspace-header">
+                <h2>AI Orchestrator Terminal</h2>
+                <div class="status-indicator">
+                    <span class="dot pulse"></span>
+                    <span>System Online</span>
+                </div>
+            </header>
+
+            <!-- Chat Area -->
+            <div class="chat-area glass-panel" id="chat-container">
+                <div class="message system-message fade-in">
+                    <div class="avatar-system">🤖</div>
+                    <div class="bubble">
+                        <p>Welcome to <strong>EduPilot</strong>. I am your orchestration agent. I coordinate a crew of specialized AI tools.</p>
+                        <p>Ask me to <em>teach a lesson</em>, <em>generate a quiz</em>, <em>check your progress</em>, or <em>resolve a doubt</em>.</p>
+                    </div>
+                </div>
+                <!-- Dynamic messages inject here -->
+            </div>
+
+            <!-- Input Area -->
+            <div class="input-area">
+                <form id="chat-form">
+                    <input type="text" id="task-input" placeholder="E.g., Can you teach me about photosynthesis?" required autocomplete="off" />
+                    <button type="submit" id="send-btn" class="glow-on-hover" title="Send Task to Orchestrator">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="22" y1="2" x2="11" y2="13"></line>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                        </svg>
+                    </button>
+                </form>
+            </div>
+        </main>
+    </div>
+    
+    <script src="app.js"></script>
+</body>
+</html>
