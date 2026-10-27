@@ -1,97 +1,141 @@
-import asyncio
+
 import json
+import sys
+from contextlib import redirect_stdout
+
 from mcp.server.fastmcp import FastMCP
-from pydantic import BaseModel, Field
+from pydantic import Field
 
 from agent_graph import tutor_graph
 import database
 
-# Initialize FastMCP Server
+
+# Initialize MCP server.
+# stdout must remain available for MCP JSON-RPC messages.
 mcp = FastMCP("Education_Tutor_MCP")
+
 
 @mcp.tool()
 async def invoke_tutor(
-    task: str,
-    student_id: str,
-    student_name: str,
-    grade_level: str,
-    age: int,
+    task: str = Field(description="The educational request, such as explain fractions"),
+    student_id: str = Field(description="Unique identifier for the student"),
+    student_name: str = Field(description="Student's name"),
+    grade_level: str = Field(description="Grade level, such as Grade 8"),
+    age: int = Field(description="Student's age"),
     learning_style: str = "reading",
-    language: str = "English"
+    language: str = "English",
 ) -> str:
     """
-    Submits an educational task to the EduPilot Orchestrator. 
-    It classifies the request and routes the task automatically to the correct specialized agent 
-    (Lesson Personalizer, Quiz Generator, Progress Tracker, Doubt Resolver, or Parent Reporter).
-    
-    Args:
-        task: The educational request (e.g. "teach me fractions", "generate a quiz about photosynthesis")
-        student_id: Unique identifier for the student
-        student_name: Student's first name
-        grade_level: Grade level (e.g. "Grade 7")
-        age: Age of the student
-        learning_style: Preferred learning style ("visual", "auditory", "reading", "kinesthetic")
-        language: Language for instruction
+    Submit an educational task to the EduPilot Orchestrator.
+
+    Automatically routes the request to the appropriate specialist:
+    Lesson Personalizer, Quiz Generator, Progress Tracker,
+    Doubt Resolver, or Parent Reporter.
     """
-    # Fetch real mastery levels from our SQLite database
-    mastery_levels = database.get_student_mastery(student_id)
-    
-    # Build student profile dictionary
-    student_profile = {
-        "student_id": student_id,
-        "name": student_name,
-        "grade_level": grade_level,
-        "age": age,
-        "learning_style": learning_style,
-        "language": language,
-        "mastery_levels": mastery_levels
-    }
-    
-    # Save the profile to DB
-    database.upsert_student(student_profile)
-    
-    # Prepare the initial LangGraph state
-    state = {
-        "task_input": task,
-        "student_profile": student_profile,
-        "classification": {},
-        "final_response": None
-    }
-    
+
+    # Validate required values.
+    if not task or not task.strip():
+        return json.dumps({
+            "status": "error",
+            "message": "Task cannot be empty."
+        })
+
+    if not student_id or not student_id.strip():
+        return json.dumps({
+            "status": "error",
+            "message": "Student ID cannot be empty."
+        })
+
+    if not student_name or not student_name.strip():
+        return json.dumps({
+            "status": "error",
+            "message": "Student name cannot be empty."
+        })
+
+    if age <= 0:
+        return json.dumps({
+            "status": "error",
+            "message": "Age must be a positive integer."
+        })
+
     try:
-        # Run synchronous LangGraph execution
-        final_state = tutor_graph.invoke(state)
-        
-        agent_invoked = final_state.get("classification", {}).get("next_agent", "unknown")
-        response = final_state.get("final_response", {})
-        
-        result = {
+        # Retrieve the student's existing mastery levels.
+        mastery_levels = database.get_student_mastery(student_id)
+
+        # Build the student profile.
+        student_profile = {
+            "student_id": student_id,
+            "name": student_name,
+            "grade_level": grade_level,
+            "age": age,
+            "learning_style": learning_style,
+            "language": language,
+            "mastery_levels": mastery_levels,
+        }
+
+        # Save or update the student profile.
+        database.upsert_student(student_profile)
+
+        # Prepare the initial LangGraph state.
+        state = {
+            "task_input": task.strip(),
+            "student_profile": student_profile,
+            "classification": {},
+            "final_response": None,
+        }
+
+        # Redirect ordinary Python stdout output from the graph
+        # to stderr so it does not corrupt MCP's JSON-RPC stream.
+        with redirect_stdout(sys.stderr):
+            final_state = await tutor_graph.ainvoke(state)
+
+        classification = final_state.get("classification") or {}
+        agent_invoked = classification.get("next_agent", "unknown")
+        response = final_state.get("final_response") or {}
+
+        # Log the interaction.
+        database.log_session(
+            student_id,
+            agent_invoked,
+            task.strip(),
+            response,
+        )
+
+        # Update mastery when the Progress Tracker is invoked.
+        if agent_invoked == "progress_tracker":
+            output = response.get("output") or {}
+            mastery_map = output.get("mastery_map") or {}
+
+            for subject, topics in mastery_map.items():
+                if not isinstance(topics, dict):
+                    continue
+
+                for topic_name, details in topics.items():
+                    if not isinstance(details, dict):
+                        continue
+
+                    score = details.get("score", 0)
+                    database.update_topic_mastery(
+                        student_id,
+                        topic_name,
+                        score,
+                    )
+
+        return json.dumps({
             "status": "success",
             "agent_invoked": agent_invoked,
-            "response": response
-        }
-        
-        # Log this entire interaction into SQLite
-        database.log_session(student_id, agent_invoked, task, response)
-        
-        # If the progress tracker was invoked, update topic mastery globally
-        if agent_invoked == "progress_tracker":
-            output = response.get("output", {})
-            mastery_map = output.get("mastery_map", {})
-            for subject, topics in mastery_map.items():
-                for topic_name, details in topics.items():
-                    score = details.get("score", 0)
-                    database.update_topic_mastery(student_id, topic_name, score)
-                    
-        return json.dumps(result, indent=2)
-    except Exception as e:
-        error_res = {
+            "response": response,
+        }, indent=2, ensure_ascii=False, default=str)
+
+    except Exception as exc:
+        # Keep the tool response readable for the MCP client.
+        # Do not print the exception to stdout.
+        return json.dumps({
             "status": "error",
-            "message": str(e)
-        }
-        return json.dumps(error_res, indent=2)
+            "message": str(exc),
+        }, indent=2, ensure_ascii=False)
 
 
 if __name__ == "__main__":
-    # Start the MCP server using stdout transport natively supported by FastMCP
-    mcp.run(transport='stdio')
+    # MCP stdio transport owns stdout; do not redirect it globally.
+    mcp.run(transport="stdio")

@@ -1232,7 +1232,7 @@ Interests:        {', '.join(student_profile.get('interests', []))}
 Language:         {student_profile.get('language', 'English')}
 Accommodations:   {', '.join(student_profile.get('accommodations', [])) or 'None'}
 Active Subject:   {student_profile.get('active_subject', 'N/A')}
-Mastery Levels:   {student_profile.get('mastery_levels', {{}})}
+Mastery Levels:   {student_profile.get('mastery_levels', {})}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
     full_prompt = base_prompt.strip() + "\n\n" + student_context

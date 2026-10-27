@@ -46,3 +46,24 @@ share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+
+# Local branding backups
+branding-backup/
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Local runtime data
+tutor.db
+*.db
+*.sqlite
+*.sqlite3
+chroma_db/
+vector_store/
+
+# Test and temporary files
+__pycache__/
+*.pyc
+*.log

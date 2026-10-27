@@ -1,38 +1,44 @@
+
 import os
 from dotenv import load_dotenv
-from langchain_openai import ChatOpenAI
-from langchain_anthropic import ChatAnthropic
+from crewai import LLM
+from langchain_google_genai import ChatGoogleGenerativeAI
 
-# Load environment variables from .env if present
 load_dotenv()
 
+
+def _get_api_key():
+    api_key = os.getenv("GOOGLE_API_KEY")
+    if not api_key or api_key == "your_google_api_key_here":
+        raise ValueError(
+            "GOOGLE_API_KEY is missing. Add your actual Gemini API key to .env."
+        )
+    return api_key
+
+
+# CrewAI specialist agents
+def get_gemini_llm(temperature=0.2):
+    return LLM(
+        model="gemini/gemini-3.6-flash",
+        api_key=_get_api_key(),
+        temperature=temperature,
+    )
+
+
+# LangChain model for LangGraph nodes using ainvoke()
 def get_orchestrator_llm():
-    """
-    Returns the LLM for the Orchestrator. 
-    Prompt recommends claude-3-5-sonnet or gpt-4o.
-    """
-    if os.getenv("OPENAI_API_KEY"):
-        return ChatOpenAI(model="gpt-4o", temperature=0.2)
-    elif os.getenv("ANTHROPIC_API_KEY"):
-        return ChatAnthropic(model_name="claude-3-5-sonnet-20240620", temperature=0.2)
-    else:
-        # Fallback for local testing without keys (Will fail if invoked)
-        return ChatOpenAI(model="gpt-4o", openai_api_key="mock_key")
+    return ChatGoogleGenerativeAI(
+        model="gemini-3.6-flash",
+        google_api_key=_get_api_key(),
+    )
+
 
 def get_creative_llm():
-    """
-    For highly generative tasks like Lesson Personalization.
-    """
-    if os.getenv("ANTHROPIC_API_KEY"):
-        return ChatAnthropic(model_name="claude-3-5-sonnet-20240620", temperature=0.7)
-    elif os.getenv("OPENAI_API_KEY"):
-        return ChatOpenAI(model="gpt-4o", temperature=0.7)
-    return ChatOpenAI(model="gpt-4o", openai_api_key="mock_key")
+    return get_gemini_llm(temperature=0.7)
+
 
 def get_reasoning_llm():
-    """
-    For analytic / rules-based tasks like Quiz Generation and Evaluating Progress.
-    """
-    if os.getenv("OPENAI_API_KEY"):
-        return ChatOpenAI(model="gpt-4o", temperature=0.4)
-    return ChatOpenAI(model="gpt-4o", openai_api_key="mock_key")
+    return ChatGoogleGenerativeAI(
+        model="gemini-3.6-flash",
+        google_api_key=_get_api_key(),
+    )
