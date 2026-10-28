@@ -49,7 +49,7 @@ chatForm.addEventListener('submit', async (e) => {
         };
 
         const res = await fetch(
-            'http://127.0.0.1:8000/api/v1/tutor/solve',
+            'https://learnpilot-ai-iig1.onrender.com/api/v1/tutor/solve',
             {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
