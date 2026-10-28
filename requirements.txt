@@ -10,3 +10,5 @@ python-dotenv
 pydantic
 mcp
 chromadb
+
+langchain-google-genai
