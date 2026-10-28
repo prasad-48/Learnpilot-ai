@@ -4,6 +4,9 @@ const taskInput = document.getElementById('task-input');
 const chatContainer = document.getElementById('chat-container');
 const sendBtn = document.getElementById('send-btn');
 
+const API_URL =
+    'https://learnpilot-ai-iig1.onrender.com/api/v1/tutor/solve';
+
 // Student profile inputs
 const sId = document.getElementById('student-id');
 const sName = document.getElementById('student-name');
@@ -24,51 +27,44 @@ chatForm.addEventListener('submit', async (e) => {
     addMessage(task, 'user');
     taskInput.value = '';
 
-    const loadId = 'msg-' + Date.now();
-    addMessage(
-        "LearnPilot AI Orchestrator is generating<span class='loading-dots'></span>",
-        'system',
-        loadId,
-        'LearnPilot AI Orchestrator'
-    );
+    const loadId = `typing-${Date.now()}`;
+    addTypingIndicator(loadId);
 
     taskInput.disabled = true;
     sendBtn.disabled = true;
 
     try {
+        const parsedAge = Number.parseInt(age.value, 10);
+
         const payload = {
             task,
             student: {
                 student_id: sId.value.trim(),
                 name: sName.value.trim(),
-                grade_level: grade.value,
-                age: Number.parseInt(age.value, 10),
+                grade_level: grade.value.trim(),
+                age: Number.isNaN(parsedAge) ? null : parsedAge,
                 learning_style: styleSelect.value,
                 language: 'English'
-            }
+            },
+            context: {}
         };
 
-        const res = await fetch(
-            'https://learnpilot-ai-iig1.onrender.com/api/v1/tutor/solve',
-            {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            }
-        );
+        const res = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
 
         let data;
 
         try {
             data = await res.json();
         } catch {
-            throw new Error(`Server returned HTTP ${res.status} with an unreadable response.`);
+            throw new Error(
+                `The server returned an unreadable response (HTTP ${res.status}).`
+            );
         }
 
-        const loader = document.getElementById(loadId);
-        if (loader) loader.remove();
-
-        // Handle HTTP errors and backend error responses.
         if (!res.ok || data.status === 'error' || data.error_type) {
             let message =
                 data.detail?.message ||
@@ -78,7 +74,7 @@ chatForm.addEventListener('submit', async (e) => {
 
             if (data.error_type === 'AI_QUOTA_EXCEEDED') {
                 message =
-                    'The AI service quota is exhausted. Please retry after your quota resets or configure a billing-enabled API key.';
+                    'The AI service quota is exhausted. Please try again later.';
             } else if (res.status === 429) {
                 message =
                     typeof message === 'string'
@@ -100,12 +96,16 @@ chatForm.addEventListener('submit', async (e) => {
         }
 
         if (data.status === 'success') {
-            const responseText =
-                typeof data.response === 'object'
-                    ? JSON.stringify(data.response, null, 2)
-                    : String(data.response ?? '');
+            const response = data.response;
 
-            const displayAgent = String(data.agent_invoked || 'LearnPilot AI')
+            const responseText =
+                typeof response === 'string'
+                    ? response
+                    : JSON.stringify(response ?? data, null, 2);
+
+            const displayAgent = String(
+                data.agent_invoked || 'LearnPilot AI'
+            )
                 .replace(/_/g, ' ')
                 .replace(/\b\w/g, c => c.toUpperCase());
 
@@ -118,27 +118,48 @@ chatForm.addEventListener('submit', async (e) => {
                 'The server returned an unexpected response.';
 
             addMessage(
-                typeof message === 'string' ? message : JSON.stringify(message),
+                typeof message === 'string'
+                    ? message
+                    : JSON.stringify(message, null, 2),
                 'system',
                 null,
                 'System Error'
             );
         }
     } catch (err) {
-        document.getElementById(loadId)?.remove();
-
         addMessage(
-            `Connection error: ${err.message}. Check that the backend is running at http://127.0.0.1:8000.`,
+            `Connection error: ${err.message}. Please check your internet connection and try again.`,
             'system',
             null,
-            'System Error'
+            'Connection Error'
         );
     } finally {
+        document.getElementById(loadId)?.remove();
+
         taskInput.disabled = false;
         sendBtn.disabled = false;
         taskInput.focus();
     }
 });
+
+function addTypingIndicator(id) {
+    const msgDiv = document.createElement('div');
+    msgDiv.className = 'message system-message fade-in typing-message';
+    msgDiv.id = id;
+
+    msgDiv.innerHTML = `
+        <div class="avatar-system" aria-hidden="true">&#129302;</div>
+        <div class="bubble typing-bubble" role="status" aria-live="polite">
+            <span class="typing-label">LearnPilot AI is thinking</span>
+            <span class="typing-dots" aria-hidden="true">
+                <span></span><span></span><span></span>
+            </span>
+        </div>
+    `;
+
+    chatContainer.appendChild(msgDiv);
+    scrollToLatest();
+}
 
 function addMessage(text, type, id = null, agent = null, isJson = false) {
     const msgDiv = document.createElement('div');
@@ -146,8 +167,10 @@ function addMessage(text, type, id = null, agent = null, isJson = false) {
 
     if (id) msgDiv.id = id;
 
-    const avatar = type === 'system' ? 'ðŸ¤–' : 'ðŸ‘¤';
-    const avatarClass = type === 'system' ? 'avatar-system' : 'avatar-user';
+    // Numeric HTML entities avoid corrupted emoji characters in source files.
+    const avatar = type === 'system' ? '&#129302;' : '&#128100;';
+    const avatarClass =
+        type === 'system' ? 'avatar-system' : 'avatar-user';
 
     let contentHtml = '';
 
@@ -162,14 +185,15 @@ function addMessage(text, type, id = null, agent = null, isJson = false) {
     }
 
     msgDiv.innerHTML = `
-        <div class="${avatarClass}">${avatar}</div>
-        <div class="bubble">
-            ${contentHtml}
-        </div>
+        <div class="${avatarClass}" aria-hidden="true">${avatar}</div>
+        <div class="bubble">${contentHtml}</div>
     `;
 
     chatContainer.appendChild(msgDiv);
+    scrollToLatest();
+}
 
+function scrollToLatest() {
     chatContainer.scrollTo({
         top: chatContainer.scrollHeight,
         behavior: 'smooth'
