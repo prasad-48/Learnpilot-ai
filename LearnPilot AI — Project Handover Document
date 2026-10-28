@@ -1,0 +1,1310 @@
+LearnPilot AI — Project Handover Document
+
+Project: LearnPilot AI — Education Tutor Agent with MCP
+Document type: Technical handover and operations guide
+Last updated: 28 October 2026
+Development environment: Windows PowerShell, Python virtual environment
+Backend framework: FastAPI
+AI integration: Google Gemini, CrewAI, LangGraph
+Knowledge retrieval: ChromaDB
+Database: SQLite locally; PostgreSQL connection string configured as an environment-variable example
+Deployment platform: Render
+Uptime monitoring: UptimeRobot
+
+1. Project Overview
+
+LearnPilot AI is an AI-powered education assistant designed to help students with explanations, personalized lessons, quizzes, progress tracking, and educational reporting.
+
+The project uses a FastAPI backend to receive student requests and an agent orchestration workflow to route requests to specialized educational agents.
+
+Main capabilities
+Doubt resolution and educational explanations.
+Personalized lesson generation.
+Quiz generation.
+Student progress tracking.
+Parent reporting.
+Curriculum retrieval using a local ChromaDB vector database.
+Student profile and learning-progress persistence.
+MCP integration for invoking the tutor through an MCP-compatible client.
+A JavaScript frontend communicating with the backend API.
+Main request flow
+A student submits a request through the frontend or API.
+FastAPI receives the request.
+The application loads the student's profile and mastery information.
+LangGraph orchestrates the request.
+The selected specialist agent processes the task.
+The curriculum retrieval system supplies relevant context when appropriate.
+The response is returned as structured JSON.
+Student interaction and progress data can be stored in the local database.
+2. Important Project Links
+2.1 GitHub repository
+
+Repository identified in the development conversation:
+
+https://github.com/prasad-48/Learnpilot-ai
+
+Open the repository to review the latest committed code, branches, README, and deployment configuration.
+
+Useful GitHub pages:
+
+Repository: https://github.com/prasad-48/Learnpilot-ai
+Repository settings: https://github.com/prasad-48/Learnpilot-ai/settings
+Actions: https://github.com/prasad-48/Learnpilot-ai/actions
+Branches: https://github.com/prasad-48/Learnpilot-ai/branches
+
+These links assume the repository is owned by prasad-48 and named Learnpilot-ai. Verify the repository address if it has been renamed or transferred.
+
+2.2 Live backend
+
+Render backend URL
+
+https://learnpilot-ai-iig1.onrender.com
+
+Backend health check
+
+https://learnpilot-ai-iig1.onrender.com/health
+
+Expected response:
+
+json
+{
+  "status": "ok"
+}
+
+
+Interactive API documentation
+
+https://learnpilot-ai-iig1.onrender.com/docs
+
+OpenAPI schema
+
+https://learnpilot-ai-iig1.onrender.com/openapi.json
+
+The backend health endpoint was reported as Up in UptimeRobot during the last deployment checks.
+
+2.3 Frontend deployment
+
+The exact public Render frontend URL was not included in the available project conversation.
+
+To find it:
+
+Open https://dashboard.render.com/
+Sign in to the account used for deployment.
+Locate the LearnPilot AI frontend Static Site.
+Open its service page.
+Copy the public URL displayed by Render.
+
+Record that URL here:
+
+Frontend URL: [copy the verified Render Static Site URL here]
+
+Do not assume that the backend URL is also the frontend URL. They may be separate Render services.
+
+2.4 UptimeRobot
+
+Monitor dashboard
+
+https://dashboard.uptimerobot.com/monitors/804453602
+
+Website being monitored
+
+https://learnpilot-ai-iig1.onrender.com/health
+
+The monitor was configured for HTTP/S monitoring at five-minute intervals.
+
+3. Local Windows Project Setup
+3.1 Project directory
+
+The project was located at:
+
+text
+C:\Users\prata\Desktop\Education-Tutor-Agent-with-MCP
+
+
+Open PowerShell and navigate to the project directory:
+
+powershell
+Set-Location "$HOME\Desktop\Education-Tutor-Agent-with-MCP"
+
+
+Confirm the current directory:
+
+powershell
+Get-Location
+
+
+List project files:
+
+powershell
+Get-ChildItem -Force
+
+
+Important files and directories include:
+
+text
+Education-Tutor-Agent-with-MCP/
+├── .env
+├── .env.example
+├── .gitignore
+├── README.md
+├── requirements.txt
+├── main.py
+├── agent_graph.py
+├── crew_agents.py
+├── education_tutor_prompts.py
+├── llm_config.py
+├── mcp_server.py
+├── database.py
+├── rag_pipeline.py
+├── frontend/
+│   ├── app.js
+│   └── index.html
+├── chroma_db/
+├── tutor.db
+└── venv/
+
+
+The precise file list can change as development continues. Use Get-ChildItem to confirm the current state.
+
+3.2 Activate the virtual environment
+
+From the project root:
+
+powershell
+.\venv\Scripts\Activate.ps1
+
+
+A successful activation usually changes the prompt to something similar to:
+
+text
+(venv) PS C:\Users\prata\Desktop\Education-Tutor-Agent-with-MCP>
+
+
+If PowerShell blocks the activation script, use the virtual environment's Python executable directly instead:
+
+powershell
+.\venv\Scripts\python.exe --version
+
+
+This avoids changing the machine-wide execution policy.
+
+3.3 Verify Python and installed packages
+powershell
+python --version
+python -m pip --version
+python -m pip list
+
+
+Verify the main framework imports:
+
+powershell
+python -c "import fastapi, uvicorn; print('FastAPI and Uvicorn OK')"
+
+powershell
+python -c "from crewai import Agent, LLM; print('CrewAI OK')"
+
+powershell
+python -c "from langgraph.graph import StateGraph; print('LangGraph OK')"
+
+powershell
+python -c "from mcp.server.fastmcp import FastMCP; print('FastMCP OK')"
+
+3.4 Install dependencies
+
+If the virtual environment already exists, activate it before installing dependencies.
+
+powershell
+python -m pip install --upgrade pip
+
+
+Install the dependencies listed in the project:
+
+powershell
+python -m pip install -r requirements.txt
+
+
+If the Gemini LangChain integration is required by the current implementation:
+
+powershell
+python -m pip install langchain-google-genai
+
+
+Do not repeatedly install or downgrade packages to resolve a model or configuration error. First inspect the exact traceback and installed versions.
+
+To record the environment:
+
+powershell
+python -m pip freeze > installed-packages.txt
+
+
+This creates a local inventory. Review the file before committing it; it may contain many transitive dependencies.
+
+4. Environment Variables and API Keys
+
+The project uses a .env file to load configuration values.
+
+Open the local environment file:
+
+powershell
+notepad .\.env
+
+
+The file should contain your actual local configuration, not the literal placeholder values below.
+
+Example template:
+
+dotenv
+GOOGLE_API_KEY=your_google_api_key_here
+OPENAI_API_KEY=
+ANTHROPIC_API_KEY=
+
+PINECONE_API_KEY=your_pinecone_api_key_here
+PINECONE_ENV=your_pinecone_env_here
+
+NOTION_API_KEY=your_notion_secret_here
+SENDGRID_API_KEY=your_sendgrid_key_here
+
+TWILIO_ACCOUNT_SID=your_twilio_sid_here
+TWILIO_AUTH_TOKEN=your_twilio_auth_token_here
+
+DATABASE_URL=postgresql://user:password@localhost:5432/edupilot
+
+
+Only populate integrations that the current application actually needs.
+
+4.1 Gemini configuration
+
+The development conversation verified that a direct request to Gemini returned OK using the supplied test configuration and a model identifier of gemini-3.6-flash.
+
+That confirms the reported test succeeded at that time. It does not guarantee that the API key has remaining quota or that every agent uses the same model successfully.
+
+Check the current AI Studio configuration here:
+
+https://aistudio.google.com/
+
+For usage and API-key management, use the Google AI Studio interface and the relevant Google Cloud project settings.
+
+Never commit a real API key.
+
+If a key that was shared in a conversation or public repository turns out to be real, revoke or rotate it.
+
+4.2 Verify that the key is loaded without printing it
+
+From the project root:
+
+powershell
+python -c "from pathlib import Path; from dotenv import load_dotenv; import os; load_dotenv(dotenv_path=Path.cwd()/'.env'); print('GOOGLE_API_KEY loaded:', bool(os.getenv('GOOGLE_API_KEY')))"
+
+
+Expected output:
+
+text
+GOOGLE_API_KEY loaded: True
+
+
+This verifies that a nonempty value is available. It does not verify the key's validity, permissions, or remaining quota.
+
+4.3 Environment template versus local secrets
+.env contains local credentials and must remain private.
+.env.example documents the variable names and safe placeholder values.
+Render environment variables must be configured separately in the Render service dashboard.
+Never print the full .env file into a shared terminal transcript or upload it to GitHub.
+5. Start the Local Backend
+5.1 Start FastAPI
+
+From the project root with the virtual environment active:
+
+powershell
+python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
+
+
+Alternative using the explicit virtual environment interpreter:
+
+powershell
+.\venv\Scripts\python.exe -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
+
+
+Keep the terminal open while the server is running.
+
+The application was previously observed starting successfully and seeding four curriculum chunks into ChromaDB.
+
+Startup output may differ after future code or dependency changes.
+
+5.2 Local service links
+
+Backend base URL
+
+http://127.0.0.1:8000
+
+Health check
+
+http://127.0.0.1:8000/health
+
+Swagger UI
+
+http://127.0.0.1:8000/docs
+
+OpenAPI schema
+
+http://127.0.0.1:8000/openapi.json
+
+5.3 Test the health endpoint from PowerShell
+powershell
+Invoke-RestMethod -Uri "http://127.0.0.1:8000/health" -Method Get
+
+
+Expected result:
+
+text
+status
+------
+ok
+
+
+To inspect the HTTP status code:
+
+powershell
+$response = Invoke-WebRequest -Uri "http://127.0.0.1:8000/health"
+$response.StatusCode
+$response.Content
+
+
+Expected HTTP status:
+
+text
+200
+
+6. Test the Tutor API
+
+The main API endpoint is:
+
+text
+POST /api/v1/tutor/solve
+
+
+It accepts a task, a student profile, and optional context.
+
+6.1 Test through Swagger
+Start the backend.
+Open http://127.0.0.1:8000/docs
+Expand POST /api/v1/tutor/solve.
+Select Try it out.
+Enter the JSON request below.
+Select Execute.
+
+Example request:
+
+json
+{
+  "task": "Explain photosynthesis in simple terms and give me three quiz questions.",
+  "student": {
+    "student_id": "student_test_001",
+    "name": "Test Student",
+    "grade_level": "8",
+    "age": 13,
+    "learning_style": "reading",
+    "language": "English"
+  },
+  "context": {}
+}
+
+
+A successful result should contain fields similar to:
+
+json
+{
+  "status": "success",
+  "agent_invoked": "doubt_resolver",
+  "response": {
+    "agent": "DoubtResolver",
+    "output": {}
+  }
+}
+
+
+The actual output depends on the request, current code, model response, and available curriculum data.
+
+The conversation previously recorded a successful HTTP 200 response with a structured explanation, quiz questions, an analogy, and retrieved curriculum context.
+
+6.2 Test the API from PowerShell
+
+With the backend running in another terminal:
+
+powershell
+$body = @{
+    task = "Explain photosynthesis in simple terms and give me three quiz questions."
+    student = @{
+        student_id = "student_test_001"
+        name = "Test Student"
+        grade_level = "8"
+        age = 13
+        learning_style = "reading"
+        language = "English"
+    }
+    context = @{}
+} | ConvertTo-Json -Depth 10
+
+Invoke-RestMethod `
+    -Uri "http://127.0.0.1:8000/api/v1/tutor/solve" `
+    -Method Post `
+    -ContentType "application/json" `
+    -Body $body
+
+
+Use a test student ID for experiments. Requests may create or update records in the local database.
+
+6.3 Additional test requests
+
+Quiz generation:
+
+json
+{
+  "task": "Create a five-question multiple-choice quiz about fractions for Grade 7.",
+  "student": {
+    "student_id": "student_test_002",
+    "name": "Quiz Test",
+    "grade_level": "7",
+    "age": 12,
+    "learning_style": "reading",
+    "language": "English"
+  },
+  "context": {}
+}
+
+
+Lesson personalization:
+
+json
+{
+  "task": "Create a personalized 20-minute lesson about photosynthesis with examples and a short activity.",
+  "student": {
+    "student_id": "student_test_003",
+    "name": "Lesson Test",
+    "grade_level": "8",
+    "age": 13,
+    "learning_style": "visual",
+    "language": "English"
+  },
+  "context": {}
+}
+
+
+Progress tracking:
+
+json
+{
+  "task": "Summarize the student's learning progress and identify topics that need revision.",
+  "student": {
+    "student_id": "student_test_001",
+    "name": "Test Student",
+    "grade_level": "8",
+    "age": 13,
+    "learning_style": "reading",
+    "language": "English"
+  },
+  "context": {}
+}
+
+
+These are test requests, not proof that every routing branch has been validated. Confirm the returned agent_invoked value for each request.
+
+7. Start the Local Frontend
+
+The project includes frontend/index.html and frontend/app.js.
+
+The simplest way to serve the static files locally is to use Python's built-in HTTP server.
+
+Open a second PowerShell terminal and navigate to the project root:
+
+powershell
+Set-Location "$HOME\Desktop\Education-Tutor-Agent-with-MCP"
+
+
+Start the frontend server:
+
+powershell
+python -m http.server 5500 --directory frontend --bind 127.0.0.1
+
+
+Open:
+
+http://127.0.0.1:5500/
+
+This serves the static frontend files. It does not start FastAPI.
+
+You must keep both terminals running:
+
+Terminal 1: FastAPI backend on port 8000.
+Terminal 2: static frontend on port 5500.
+
+The frontend must be configured to send API requests to the local backend when running locally. Inspect frontend/app.js to confirm the API base URL.
+
+If the frontend is configured to call the Render backend instead, local browser requests will use the deployed service rather than your local Python process.
+
+Stop local servers
+
+Press:
+
+text
+Ctrl + C
+
+
+in each server terminal.
+
+8. Gemini, CrewAI, and LangGraph
+8.1 LLM configuration
+
+Main file:
+
+text
+llm_config.py
+
+
+The conversation documented a transition from ChatGoogleGenerativeAI to CrewAI's native LLM class for specialist agents.
+
+The reason was compatibility: CrewAI's Agent constructor accepts its own LLM abstraction, whereas the previous LangChain model object caused a validation issue in the existing agent setup.
+
+The project also uses LangGraph nodes, so the LLM object returned for LangGraph may need to differ from the object passed to CrewAI.
+
+The tested model identifier in the direct LangChain request was:
+
+text
+gemini-3.6-flash
+
+
+The corresponding CrewAI model identifier used during configuration was:
+
+text
+gemini/gemini-3.6-flash
+
+
+Model availability and quota must be verified against the actual Google API configuration.
+
+8.2 Inspect installed versions
+powershell
+python -m pip show crewai
+python -m pip show langgraph
+python -m pip show langchain-google-genai
+python -m pip show google-genai
+
+8.3 Check Python syntax
+
+Run:
+
+powershell
+python -m py_compile .\llm_config.py .\crew_agents.py .\agent_graph.py .\main.py .\mcp_server.py
+
+
+No output normally indicates that Python syntax compilation passed.
+
+This does not prove that all imports, API calls, model requests, or agent workflows will succeed at runtime.
+
+8.4 Gemini quota errors
+
+The development conversation reported a Gemini 503 UNAVAILABLE event and a free-tier quota exhaustion error.
+
+If a request fails:
+
+Read the complete error in the backend terminal.
+Check the relevant API usage and rate limits.
+Confirm which model and Google project are being used.
+Wait for the applicable quota reset or use an authorized configuration with available quota.
+Avoid repeatedly sending requests while the quota is exhausted.
+
+Do not assume that a successful direct model test proves the entire agent graph will work.
+
+9. MCP Server
+
+The MCP server is defined in:
+
+text
+mcp_server.py
+
+
+The test client is:
+
+text
+test_mcp.py
+
+
+The tool exposed by the server is:
+
+text
+invoke_tutor
+
+
+It accepts student information and an educational task, then invokes the EduPilot orchestration workflow.
+
+9.1 Compile the MCP server
+
+From the project root:
+
+powershell
+python -m py_compile .\mcp_server.py
+
+9.2 Verify MCP imports
+powershell
+python -c "from mcp.server.fastmcp import FastMCP; print('FastMCP import OK')"
+
+powershell
+python -c "from mcp import ClientSession, StdioServerParameters; print('MCP client support OK')"
+
+9.3 Run the MCP test
+powershell
+$env:PYTHONIOENCODING = "utf-8"
+$env:PYTHONUTF8 = "1"
+python -X utf8 .\test_mcp.py
+
+
+The test should initialize the server, discover invoke_tutor, and attempt a tool invocation if that is how the current test_mcp.py is written.
+
+9.4 Critical MCP stdout requirement
+
+For an MCP server using standard input/output transport, stdout is reserved for JSON-RPC protocol messages.
+
+Do not globally redirect stdout with:
+
+python
+sys.stdout = sys.stderr
+
+
+Application logs or console output written to stdout can corrupt MCP messages.
+
+If you see:
+
+text
+Failed to parse JSONRPC message from server
+
+
+inspect the captured input for unexpected console output, progress bars, ANSI color sequences, logging messages, or encoding errors.
+
+A local redirect_stdout block may help with ordinary Python output during graph execution, but it is not a universal solution for logging handlers that retain their own output stream.
+
+Configure the relevant loggers and handlers explicitly if the error persists.
+
+Also verify the indentation of the with block around the tutor_graph.ainvoke(state) call.
+
+9.5 MCP versus REST
+
+The REST API and MCP server are separate entry points:
+
+REST API: main.py, started with Uvicorn.
+MCP server: mcp_server.py, normally started by an MCP-compatible client using stdio transport.
+
+The MCP server is not automatically available as an HTTP endpoint just because the FastAPI service is deployed.
+
+A separate MCP deployment or transport configuration may be needed if remote MCP access is required.
+
+10. Render Deployment
+10.1 Render dashboard
+
+https://dashboard.render.com/
+
+Use the dashboard to inspect the backend service, frontend Static Site, deployment logs, environment variables, and service settings.
+
+10.2 Backend service
+
+Public URL:
+
+https://learnpilot-ai-iig1.onrender.com
+
+Health endpoint:
+
+https://learnpilot-ai-iig1.onrender.com/health
+
+API documentation:
+
+https://learnpilot-ai-iig1.onrender.com/docs
+
+The production health endpoint should return:
+
+json
+{
+  "status": "ok"
+}
+
+10.3 Backend start command
+
+The project's FastAPI application is defined in main.py, with:
+
+python
+app = FastAPI(...)
+
+
+The local development command is:
+
+powershell
+python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
+
+
+For a Render web service, a typical production start command is:
+
+bash
+python -m uvicorn main:app --host 0.0.0.0 --port $PORT
+
+
+Use that command only if the service's configured root directory and Python environment make main.py importable from the current working directory.
+
+If Render uses a project root directory, set it to the directory containing the relevant application files.
+
+Do not use --reload for production.
+
+10.4 Build command
+
+A typical build command is:
+
+bash
+pip install -r requirements.txt
+
+
+Confirm that the actual requirements.txt includes every runtime dependency needed by the deployed code.
+
+The exact commands configured for your current Render services were not supplied in the conversation, so verify them in the dashboard before making changes.
+
+10.5 Environment variables on Render
+
+Open the backend service in Render and locate its environment settings.
+
+Configure the necessary values there, for example:
+
+text
+GOOGLE_API_KEY
+
+
+Add other integration variables only when the application requires them.
+
+Never upload .env to GitHub or copy production secrets into source code.
+
+10.6 Verify a deployment
+
+After deploying a change:
+
+Open the Render dashboard.
+Confirm the latest deployment completed successfully.
+Review the build and runtime logs.
+Open the backend health endpoint.
+Open the API documentation.
+Submit a test request.
+Verify the agent response and inspect any errors.
+
+Health-check success alone does not prove that Gemini, ChromaDB, database operations, and all agent branches work correctly.
+
+11. GitHub Workflow
+11.1 Verify the remote
+
+From the project root:
+
+powershell
+git remote -v
+
+
+Check the current branch:
+
+powershell
+git branch --show-current
+
+
+Check working tree changes:
+
+powershell
+git status --short
+
+
+Inspect the most recent commits:
+
+powershell
+git log -5 --oneline
+
+
+The development conversation identified prasad-48/Learnpilot-ai as the intended repository, but the actual remote configuration should always be verified locally.
+
+11.2 Review staged changes
+powershell
+git diff --cached --check
+
+powershell
+git diff --cached --stat
+
+powershell
+git diff --cached --name-only
+
+
+Review the staged code before committing:
+
+powershell
+git diff --cached
+
+
+Git may open a pager. Press q to exit.
+
+11.3 Check for accidental secrets
+
+Search staged files for common Google API-key patterns:
+
+powershell
+git grep --cached -l -I -E 'AIza[0-9A-Za-z_-]{30,}' -- .
+
+
+Search for obvious hardcoded key assignments:
+
+powershell
+git grep --cached -l -I -E 'GOOGLE_API_KEY[[:space:]]*=[[:space:]]*["''][^"'']+' -- .
+
+
+No results are a useful signal, not a guarantee that the repository contains no secrets.
+
+Review .gitignore and ensure .env, local databases, virtual environments, and other sensitive or generated files are excluded where appropriate.
+
+If a real secret was ever committed, removing it from the latest version is not sufficient by itself. Revoke or rotate the credential.
+
+11.4 Commit changes
+
+Only after reviewing the staged files:
+
+powershell
+git add .env.example .gitignore README.md agent_graph.py crew_agents.py education_tutor_prompts.py frontend/app.js frontend/index.html llm_config.py main.py mcp_server.py check_mcp.py test_mcp.py
+
+
+Review again:
+
+powershell
+git diff --cached --check
+git diff --cached --stat
+git status --short
+
+
+Commit:
+
+powershell
+git commit -m "Update LearnPilot AI tutor and deployment configuration"
+
+
+Verify:
+
+powershell
+git log -1 --oneline
+
+11.5 Push to GitHub
+
+First confirm the intended branch and remote:
+
+powershell
+git branch --show-current
+git remote -v
+
+
+If the intended branch is main and the remote is origin, push with:
+
+powershell
+git push -u origin main
+
+
+If the branch is different, use the actual branch name instead of main.
+
+Do not force-push merely to resolve an authentication or repository-history problem.
+
+11.6 Check deployment after pushing
+
+If Render is configured for automatic deployment from the repository, a successful push may trigger a new deployment.
+
+Verify this in the Render dashboard. Do not assume the deployment succeeded solely because git push succeeded.
+
+12. UptimeRobot Monitoring
+12.1 Current configuration
+
+The monitor was configured to check:
+
+text
+https://learnpilot-ai-iig1.onrender.com/health
+
+
+Reported settings:
+
+Monitor type: HTTP/S.
+Check interval: Five minutes.
+Status at the time of the report: Up.
+Reported average response time: 153 ms.
+Reported uptime: 100% for the displayed monitoring periods.
+Incidents: None reported at that time.
+
+These values are historical observations from the conversation, not a live guarantee of current uptime.
+
+12.2 Open the monitor
+
+https://dashboard.uptimerobot.com/monitors/804453602
+
+12.3 What the monitor does
+
+UptimeRobot periodically requests the health URL and records whether it receives a successful response according to the monitor's configuration.
+
+It can help detect outages and send alerts.
+
+It does not:
+
+Guarantee that Render will keep a free backend instance awake.
+Prevent every deployment, restart, or service failure.
+Verify that Gemini requests succeed.
+Verify that every tutor agent works.
+Guarantee that a student can complete an entire workflow.
+12.4 Test application readiness
+
+Use all three checks:
+
+Health endpoint responds.
+Swagger documentation opens.
+A representative tutor request succeeds.
+
+If the health check is fast but the first tutor request is slow, investigate backend cold starts, model latency, quotas, and application initialization.
+
+For reliable always-on service, review Render's current paid hosting options and the service's actual plan restrictions.
+
+13. Database and Curriculum Storage
+13.1 Local database
+
+The project contains:
+
+text
+database.py
+tutor.db
+
+
+The application uses database functions for student profiles, session logging, and mastery tracking.
+
+Before modifying or deleting the local database, stop the application and create a backup.
+
+Backup command:
+
+powershell
+Copy-Item .\tutor.db ".\tutor-backup-$(Get-Date -Format yyyyMMdd-HHmmss).db"
+
+
+Confirm the backup exists:
+
+powershell
+Get-ChildItem .\tutor-backup-*.db
+
+
+Do not commit database backups containing student information.
+
+13.2 ChromaDB
+
+The project contains a local vector-store directory:
+
+text
+chroma_db/
+
+
+The development logs reported that four curriculum chunks were seeded at startup.
+
+Check that the directory exists:
+
+powershell
+Test-Path .\chroma_db
+
+
+ChromaDB persistence and deployment behavior depend on the current rag_pipeline.py implementation and Render's configured storage.
+
+A local directory is not automatically shared with the deployed backend. Confirm how curriculum data is initialized and persisted in production.
+
+13.3 PostgreSQL configuration
+
+The .env.example includes a PostgreSQL-style DATABASE_URL, but the available application code shows SQLite database functions.
+
+Therefore, do not assume that PostgreSQL is currently the active database simply because the variable exists in the template.
+
+Check database.py and the deployed environment before migrating or changing database settings.
+
+14. Troubleshooting Guide
+Problem A: Local backend does not start
+
+Check the active directory:
+
+powershell
+Get-Location
+
+
+Check the main file:
+
+powershell
+Test-Path .\main.py
+
+
+Compile the main files:
+
+powershell
+python -m py_compile .\main.py .\agent_graph.py .\crew_agents.py .\llm_config.py
+
+
+Run Uvicorn and read the complete traceback:
+
+powershell
+python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
+
+Problem B: Port 8000 is already in use
+
+Find the process listening on port 8000:
+
+powershell
+Get-NetTCPConnection -LocalPort 8000 -State Listen
+
+
+Inspect the owning process:
+
+powershell
+Get-Process -Id <PROCESS_ID>
+
+
+Replace <PROCESS_ID> with the actual numeric process ID.
+
+Alternatively, run the local backend on another port:
+
+powershell
+python -m uvicorn main:app --reload --host 127.0.0.1 --port 8001
+
+
+If you change ports, update the frontend's local API base URL accordingly.
+
+Problem C: API returns HTTP 500
+
+Inspect the backend terminal for the traceback.
+
+Possible causes include:
+
+Missing environment variables.
+Invalid or unavailable model identifier.
+Gemini API quota exhaustion.
+Model service unavailability.
+Agent configuration errors.
+Database errors.
+Malformed agent output.
+
+Use the actual error to identify the failure rather than changing several dependencies at once.
+
+Problem D: HTTP 422 validation error
+
+Check that the JSON request contains the required fields:
+
+task
+student.student_id
+student.name
+student.grade_level
+student.age
+
+The optional student settings and context should use the expected types.
+
+Problem E: MCP JSON-RPC parsing errors
+
+If the client prints:
+
+text
+Failed to parse JSONRPC message from server
+
+
+check whether ordinary application output is contaminating stdout.
+
+Run the MCP test with UTF-8 enabled:
+
+powershell
+$env:PYTHONIOENCODING = "utf-8"
+$env:PYTHONUTF8 = "1"
+python -X utf8 .\test_mcp.py
+
+
+Do not globally redirect stdout when using MCP stdio transport.
+
+Problem F: Gemini quota exhausted
+
+Inspect the actual Google API error and check the applicable model and project limits.
+
+Do not assume that changing the model name alone resolves the quota issue. Check which quota is exhausted and whether the alternative model has available quota.
+
+Problem G: Render health check fails
+Open the Render dashboard.
+Select the backend service.
+Inspect the latest deployment.
+Read the build logs.
+Read the runtime logs.
+Confirm the configured start command.
+Confirm the required environment variables.
+Test the public health endpoint again.
+
+A deployment can fail even when the GitHub push succeeds.
+
+Problem H: Frontend loads but requests fail
+
+Open the browser's developer tools and inspect the Network and Console panels.
+
+Check:
+
+The frontend API base URL.
+Whether the request uses the correct HTTP method.
+The request body.
+The response status and body.
+CORS configuration.
+Whether the Render backend is responding.
+
+The current FastAPI code uses permissive CORS settings. Review them before using the application in a production environment.
+
+15. Security and Production Readiness
+
+Before treating LearnPilot AI as production-ready:
+
+Keep .env out of Git.
+Rotate any real API key that has been exposed.
+Use appropriate CORS origins rather than allowing every origin indiscriminately.
+Avoid returning raw internal exception details to public API clients.
+Add appropriate authentication and authorization if student records are accessible through the API.
+Avoid exposing sensitive student data in application logs.
+Back up important database data.
+Check API quotas and model usage costs.
+Confirm that the production database and vector store have appropriate persistence.
+Validate all educational agent outputs.
+Review dependency updates before applying them to production.
+Test each routing branch, not just doubt resolution.
+Verify that errors are logged without leaking secrets.
+
+Student data should be handled with appropriate privacy protections, especially if the system is used by children or schools.
+
+16. Recommended Operational Checklist
+Daily or before a demonstration
+Open the live frontend.
+Check the backend health URL.
+Check UptimeRobot status.
+Test a representative student question.
+Check Render logs if the request fails.
+Confirm the Gemini API has usable quota.
+Before every deployment
+Review git status.
+Compile Python files.
+Test the health endpoint.
+Test the main tutor endpoint.
+Check for accidental secrets.
+Commit the intended files.
+Push to the correct branch.
+Verify the Render deployment.
+Retest the public API.
+Before major changes
+Back up tutor.db.
+Record the current working Git commit.
+Review dependency changes.
+Confirm environment variables.
+Test locally before deploying.
+17. Quick Command Reference
+
+Run these commands from the project root in PowerShell.
+
+Navigate to the project
+
+powershell
+Set-Location "$HOME\Desktop\Education-Tutor-Agent-with-MCP"
+
+
+Activate the environment
+
+powershell
+.\venv\Scripts\Activate.ps1
+
+
+Start the backend
+
+powershell
+python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
+
+
+Open local API documentation
+
+powershell
+Start-Process "http://127.0.0.1:8000/docs"
+
+
+Check local health
+
+powershell
+Invoke-RestMethod "http://127.0.0.1:8000/health"
+
+
+Start the local frontend in a separate terminal
+
+powershell
+python -m http.server 5500 --directory frontend --bind 127.0.0.1
+
+
+Check Python syntax
+
+powershell
+python -m py_compile .\main.py .\agent_graph.py .\crew_agents.py .\llm_config.py .\mcp_server.py
+
+
+Run MCP tests
+
+powershell
+$env:PYTHONIOENCODING = "utf-8"
+$env:PYTHONUTF8 = "1"
+python -X utf8 .\test_mcp.py
+
+
+Check Git changes
+
+powershell
+git status --short
+
+
+Review staged changes
+
+powershell
+git diff --cached --check
+git diff --cached --stat
+
+
+Commit reviewed changes
+
+powershell
+git commit -m "Update LearnPilot AI"
+
+
+Push the current main branch
+
+powershell
+git push origin main
+
+
+Only use the last command if main is the intended branch and origin points to the correct repository.
+
+Check the deployed backend
+
+powershell
+Invoke-RestMethod "https://learnpilot-ai-iig1.onrender.com/health"
+
+
+Open the monitoring dashboard
+
+powershell
+Start-Process "https://dashboard.uptimerobot.com/monitors/804453602"
+
+18. Final Project Status
+
+Based on the development history supplied for this handover:
+
+Component	Last reported status
+Local FastAPI backend	Started successfully
+Local health endpoint	Returned {"status":"ok"}
+Gemini direct test	Returned OK with the tested configuration
+CrewAI agent integration	LLM initialization succeeded
+LangGraph tutor workflow	Returned a successful doubt-resolution response
+Curriculum retrieval	Context was included in the tutor response
+REST tutor endpoint	Returned HTTP 200 in the reported test
+MCP tool discovery	invoke_tutor was discovered
+MCP tool invocation	Returned a tutoring result, although stdout parsing errors were also reported
+Render backend	Public health URL supplied
+UptimeRobot	Monitor reported Up at the time of the supplied screenshot
+GitHub publishing	Staging and secret checks were reported; the final commit and push were not confirmed in the supplied history
+All agent branches	Not yet confirmed as fully tested
+Render frontend URL	Needs to be retrieved from the Render dashboard
+
+This is a record of the last reported state, not a fresh live audit.
+
+Handover conclusion
+
+LearnPilot AI has a functioning local FastAPI tutoring workflow and a reported deployed backend health endpoint. The next priorities are to verify the final GitHub commit and Render deployment, test all agent routes, resolve any remaining MCP stdout contamination, and confirm the production database, model quota, and frontend configuration.
+
+Use this document as the operational reference for restarting, testing, maintaining, and handing over the project. Update the repository URL, frontend URL, Render configuration, and component status whenever those details change.
