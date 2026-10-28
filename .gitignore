@@ -1,0 +1,69 @@
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Database
+*.sqlite3
+*.db
+tutor.db
+
+# Vector DB
+chroma_db/
+vector_store/
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Agent Memory/Logs
+session_logs/
+agent_outputs/
+
+# Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Local branding backups
+branding-backup/
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Local runtime data
+tutor.db
+*.db
+*.sqlite
+*.sqlite3
+chroma_db/
+vector_store/
+
+# Test and temporary files
+__pycache__/
+*.pyc
+*.log

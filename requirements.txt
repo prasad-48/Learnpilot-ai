@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+langgraph
+langchain
+langchain-core
+langchain-openai
+langchain-anthropic
+crewai
+python-dotenv
+pydantic
+mcp
+chromadb
+
+langchain-google-genai
